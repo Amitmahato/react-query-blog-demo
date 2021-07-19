@@ -1,20 +1,22 @@
 import React from 'react'
 import axios from 'axios'
+import { useMutation } from 'react-query'
+import { queryClient } from '..'
 
 export default function useCreatePost() {
-  const [state, setState] = React.useReducer((_, action) => action, {
-    isIdle: true,
-  })
-
-  const mutate = React.useCallback(async (values) => {
-    setState({ isLoading: true })
-    try {
-      const data = axios.post('/api/posts', values).then((res) => res.data)
-      setState({ isSuccess: true, data })
-    } catch (error) {
-      setState({ isError: true, error })
+  return useMutation(
+    (values) => axios.post('/api/posts', values).then((res) => res.data),
+    {
+      // to reflec the changes in the UI immediately, without waiting for request to resolve
+      onMutate: (newPostData) => {
+        queryClient.setQueryData('posts', (oldPost) => [
+          ...oldPost,
+          newPostData,
+        ])
+      },
+      onSuccess: () => {
+        queryClient.invalidateQueries('posts')
+      },
     }
-  }, [])
-
-  return [mutate, state]
+  )
 }
